@@ -7,7 +7,8 @@ interface User {
   refreshToken: string;
   role:string,
   Premium:Boolean,
-  premiumPoints:number
+  premiumPoints:number,
+  interestedIn:[string]
 }
 
 export interface UserDoc extends User, Document {}
