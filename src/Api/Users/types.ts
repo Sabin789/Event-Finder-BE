@@ -8,7 +8,10 @@ interface User {
   role:string,
   Premium:Boolean,
   premiumPoints:number,
-  interestedIn:[string]
+  interestedIn:[string],
+  followers:[string],
+  following:[string],
+  eventReqs:[string]
 }
 
 export interface UserDoc extends User, Document {}

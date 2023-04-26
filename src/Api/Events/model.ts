@@ -15,7 +15,10 @@ const EventModel= new Schema({
    Picture:{type:String},
    ActiveStatus:{type:Boolean,default:true},
    Private:{type:Boolean,default:false},
-   user:{type:mongoose.Types.ObjectId,ref:"user",required:true}
+   user:{type:mongoose.Types.ObjectId,ref:"user",required:true},
+   members:{type:[{type:String}]},
+   limit:{type:Number},
+   likes:{type:[{type:String}]}
 })
 
 export default model("event",EventModel)

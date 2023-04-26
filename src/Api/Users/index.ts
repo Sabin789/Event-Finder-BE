@@ -61,8 +61,6 @@ UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
     }
     })
 
-
-
   UserRouter.put("/me", JWTTokenAuth, async (req, res, next) => {
     try {
       const updatedUser = await UsersModel.findOneAndUpdate(
@@ -204,6 +202,210 @@ UserRouter.delete("/:id",JWTTokenAuth,adminOnlyMiddleware,async(req,res,next)=>{
     }
 })
 
+
+// Follow Unfollow
+
+
+UserRouter.put("/:id/FollowUnfollow",JWTTokenAuth,async(req,res,next)=>{
+ try {
+    const userId=(req as UserRequest).user?._id
+    const follower=await UsersModel.findById(userId)
+    const followed=await UsersModel.findById(req.params.id)
+    if(!follower?.following.includes(req.params.id.toString())){
+    await UsersModel.findByIdAndUpdate(
+      userId,
+      {$push:{following:req.params.id}},
+      {new:true,runValidators:true}
+      )
+      await UsersModel.findByIdAndUpdate(
+        req.params.id,
+        {$push:{followers:userId}},
+        {new:true,runValidators:true}
+        )
+        res.send(`You started following ${followed?.name}`)
+    }else{
+      await UsersModel.findByIdAndUpdate(
+        userId,
+        {$pull:{following:req.params.id}},
+        {new:true,runValidators:true}
+        )
+        await UsersModel.findByIdAndUpdate(
+          req.params.id,
+          {$pull:{followers:userId}},
+          {new:true,runValidators:true}
+          )
+          res.send(`You stopped following ${followed?.name}`)
+    }
+ } catch (error) {
+  next(error)
+ }
+})
+ 
+ 
+UserRouter.post("/:id/likeUnlikePost",JWTTokenAuth,async(req,res,next)=>{
+  try {
+    const userId=(req as UserRequest).user?._id
+
+    const user=await UsersModel.findById(userId)
+    const post=await PostModel.findById(req.params.id)
+    if(!post?.likes.includes(user?._id)){
+       await PostModel.findByIdAndUpdate(
+         req.params.id,
+        {
+          $push: { likes: user?._id },
+        },
+        { new: true,runValidators:true }
+      )
+      res.send("liked")
+    }else{
+       await PostModel.findByIdAndUpdate(
+        req.params.id,
+       {
+         $pull: { likes: user?._id },
+       },
+       { new: true,runValidators:true }
+     )
+     res.send("unliked")
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+
+
+UserRouter.post("/:id/likeUnlikeEvent",JWTTokenAuth,async(req,res,next)=>{
+  try {
+    const userId=(req as UserRequest).user?._id
+
+    const user=await UsersModel.findById(userId)
+    const event=await EventModel.findById(req.params.id)
+    if(!event?.likes.includes(user?._id)){
+       await EventModel.findByIdAndUpdate(
+         req.params.id,
+        {
+          $push: { likes: user?._id },
+        },
+        { new: true,runValidators:true }
+      )
+      res.send("liked")
+    }else{
+       await EventModel.findByIdAndUpdate(
+        req.params.id,
+       {
+         $pull: { likes: user?._id },
+       },
+       { new: true,runValidators:true }
+     )
+     res.send("unliked")
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+
+UserRouter.post("/:id/joinLeave",JWTTokenAuth,async(req,res,next)=>{
+try {
+  const userId=(req as UserRequest).user?._id
+
+    const user=await UsersModel.findById(userId)
+    const event=await EventModel.findById(req.params.id)
+    const members=event?.members
+    if(!event?.Private){
+     if(!members?.includes(user?._id)){
+      await EventModel.findByIdAndUpdate(
+        req.params.id,
+        {$push:{members:user?._id}},
+        {new:true,runValidators:true}
+      )
+      res.send("joined")
+     }else{
+
+      await EventModel.findByIdAndUpdate(
+        req.params.id,
+        {$pull:{members:user?._id}},
+        {new:true,runValidators:true}
+      )
+      res.send("Left")
+     }
+  
+    }else{
+      const eventUserId= event.user
+     const eventUser=await UsersModel.findById(eventUserId)
+      if(!eventUser?.eventReqs.includes(user?._id)){
+       await UsersModel.findByIdAndUpdate(
+        eventUserId,
+        {$push:{eventReqs:user?._id}},
+        {new:true,runValidators:true}
+        )
+        res.send(user?._id)
+      }else{
+        await UsersModel.findByIdAndUpdate(
+          eventUserId,
+          {$pull:{eventReqs:user?._id}},
+          {new:true,runValidators:true}
+          )
+          res.send("unsent req")
+      }
+    }
+} catch (error) {
+  next(error)
+}
+})
+
+UserRouter.post("/:id/accept/:uid",JWTTokenAuth,async(req,res,next)=>{
+  try {
+    const userId=(req as UserRequest).user?._id
+
+    const user=await UsersModel.findById(userId)
+    const event=await EventModel.findById(req.params.id)
+    if(user?.eventReqs.includes(req.params.uid)){
+      await UsersModel.findByIdAndUpdate(
+        userId,
+        {$pull:{eventReqs:req.params.uid}},
+        {new:true,runValidators:true}
+      )
+      await EventModel.findByIdAndUpdate(
+        req.params.id,
+         {$push:{members:req.params.uid}},
+         {new:true,runValidators:true}
+      )
+      res.send("accepted")
+    }else{
+     res.send("nothing to accept")
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+
+UserRouter.post("/:id/decline/:uid",JWTTokenAuth,async(req,res,next)=>{
+  try {
+    const userId=(req as UserRequest).user?._id
+
+    const user=await UsersModel.findById(userId)
+    const event=await EventModel.findById(req.params.id)
+    if(user?.eventReqs.includes(req.params.uid)){
+      await UsersModel.findByIdAndUpdate(
+        userId,
+        {$pull:{eventReqs:req.params.uid}},
+        {new:true,runValidators:true}
+      )
+      await EventModel.findByIdAndUpdate(
+        req.params.id,
+         {$pull:{members:req.params.uid}},
+         {new:true,runValidators:true}
+      )
+      res.send("decline")
+    }else{
+     res.send("nothing to decline")
+    }
+  } catch (error) {
+    
+  }
+})
 
 
 export default UserRouter

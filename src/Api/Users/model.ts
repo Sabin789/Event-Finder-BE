@@ -38,9 +38,15 @@ const UserModel= new Schema({
   role:{type:String,required: true, enum: ["Admin","Moderator","User"], default: "User"},
   Premium:{type:Boolean,default:false},
   bio:{type:String},
-  interestedIn:{type:[{ type: String}],
-  validate: [arrayLimit, '{PATH} exceeds the limit of 10']},
+  interestedIn:{
+    type:[{ type: String}],
+  validate: [arrayLimit, '{PATH} exceeds the limit of 10']
+},
   address:{type:String,required:true},
+  followers:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
+  following:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
+  eventReqs:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
+  reportPoints:{type:Number,dafault:0}
 
 },{timestamps: true})
 
