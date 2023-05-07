@@ -19,6 +19,6 @@ const EventModel= new Schema({
    members:{type:[{type:String}]},
    limit:{type:Number},
    likes:{type:[{type:String}]}
-})
+},{timestamps:true})
 
 export default model("event",EventModel)

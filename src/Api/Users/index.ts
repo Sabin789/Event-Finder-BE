@@ -7,9 +7,10 @@ import { createAccessToken, createRefreshToken } from "../../lib/auth/tools";
 import { avatarUploader } from "../../lib/cloudinary";
 import { googleRedirectRequest } from "../../types";
 import UsersModel from "./model";
-import { Request, Response, NextFunction } from "express";
+// import { Request, Response, NextFunction } from "express";
 import PostModel from "../Posts/model"
 import EventModel from "../Events/model"
+import { moderatorOnlyMiddleware } from "../../lib/auth/ModeratorMiddleware";
 
 const UserRouter=Express.Router()
 
@@ -34,7 +35,14 @@ UserRouter.get("/googleRedirect",
       }
     }
   )
-
+UserRouter.get("/",JWTTokenAuth,async(req,res,next)=>{
+  try {
+    const users=await UsersModel.find()
+    res.send(users)
+  } catch (error) {
+    next(error)
+  }
+})
 
 UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
     try {
@@ -51,15 +59,31 @@ UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
       const userId=(req as UserRequest).user?._id
     const user=await UsersModel.findById(userId)
     const tags=user?.interestedIn
-      const postsAndEvents = await Promise.all([
-        PostModel.find({ tags: { $in: tags } }).populate("user", "name email avatar"),
-        EventModel.find({ tags: { $in: tags } }).populate("user", "name email avatar")
-      ])
-      res.send(postsAndEvents)
+      const posts = await PostModel.find({
+        tags: { $in: tags }
+      }).populate("user","name avatar email")
+      res.send(posts)
     } catch (error) {
       next(error)
     }
     })
+
+
+    UserRouter.get("/me/events",JWTTokenAuth,async(req,res,next)=>{
+      try {
+        const userId=(req as UserRequest).user?._id
+      const user=await UsersModel.findById(userId)
+      const tags=user?.interestedIn
+        const posts = await EventModel.find({
+          tags: { $in: tags }
+        })
+        res.send(posts)
+      } catch (error) {
+        next(error)
+      }
+      })
+   
+
 
   UserRouter.put("/me", JWTTokenAuth, async (req, res, next) => {
     try {
@@ -78,7 +102,7 @@ UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
 
 
 
-  UserRouter.post("/premium", async (req, res, next) => {
+  UserRouter.post("/premium", JWTTokenAuth,async (req, res, next) => {
     try {
       const user = await UsersModel.findById((req as UserRequest).user?._id);
       if (!user) {
@@ -109,10 +133,15 @@ UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
 
   
   UserRouter.post( "/me/avatar",avatarUploader,JWTTokenAuth, async (req, res, next) => {
-    await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
+    try {
+       await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
       avatar: req.file?.path,
     });
     res.send({ avatarURL: req.file?.path });
+    } catch (error) {
+      next(error)
+    }
+   
   }
 );
 //Normal Routes
@@ -274,36 +303,44 @@ UserRouter.post("/:id/likeUnlikePost",JWTTokenAuth,async(req,res,next)=>{
 
 
 
-UserRouter.post("/:id/likeUnlikeEvent",JWTTokenAuth,async(req,res,next)=>{
+UserRouter.post("/:id/likeUnlikeEvent", JWTTokenAuth, async (req, res, next) => {
   try {
-    const userId=(req as UserRequest).user?._id
+    const userId = (req as UserRequest).user?._id;
+    const user = await UsersModel.findById(userId);
+    const event = await EventModel.findById(req.params.id);
 
-    const user=await UsersModel.findById(userId)
-    const event=await EventModel.findById(req.params.id)
-    if(!event?.likes.includes(user?._id)){
-       await EventModel.findByIdAndUpdate(
-         req.params.id,
-        {
-          $push: { likes: user?._id },
-        },
-        { new: true,runValidators:true }
-      )
-      res.send("liked")
-    }else{
-       await EventModel.findByIdAndUpdate(
+    if (!event?.likes.includes(user?._id)) {
+      await EventModel.findByIdAndUpdate(
         req.params.id,
-       {
-         $pull: { likes: user?._id },
-       },
-       { new: true,runValidators:true }
-     )
-     res.send("unliked")
+        { $push: { likes: user?._id } },
+        { new: true, runValidators: true }
+      );
+    } else {
+      await EventModel.findByIdAndUpdate(
+        req.params.id,
+        { $pull: { likes: user?._id } },
+        { new: true, runValidators: true }
+      );
     }
+
+    const updatedEvent = await EventModel.findById(req.params.id);
+    const likesCount = updatedEvent?.likes.length || 0; // get the updated likes count
+
+    res.send(updatedEvent);
   } catch (error) {
-    next(error)
+    next(error);
+  }
+});
+UserRouter.delete("/session", JWTTokenAuth, async (req, res, next) => {
+  try {
+    await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
+      refreshToken: "",
+    });
+    res.send({ message: "Successfully logged out!" });
+  } catch (error) {
+    next(error);
   }
 })
-
 
 UserRouter.post("/:id/joinLeave",JWTTokenAuth,async(req,res,next)=>{
 try {
@@ -312,6 +349,9 @@ try {
     const user=await UsersModel.findById(userId)
     const event=await EventModel.findById(req.params.id)
     const members=event?.members
+    const eventUserId= event?.user
+    const eventUser=await UsersModel.findById(eventUserId)
+    if(user?._id.toString() !== eventUserId?.toString()){
     if(!event?.Private){
      if(!members?.includes(user?._id)){
       await EventModel.findByIdAndUpdate(
@@ -319,7 +359,7 @@ try {
         {$push:{members:user?._id}},
         {new:true,runValidators:true}
       )
-      res.send("joined")
+      res.send(event)
      }else{
 
       await EventModel.findByIdAndUpdate(
@@ -327,12 +367,12 @@ try {
         {$pull:{members:user?._id}},
         {new:true,runValidators:true}
       )
-      res.send("Left")
+      res.send(event)
      }
   
     }else{
-      const eventUserId= event.user
-     const eventUser=await UsersModel.findById(eventUserId)
+      
+if(!members?.includes(user?._id)){
       if(!eventUser?.eventReqs.includes(user?._id)){
        await UsersModel.findByIdAndUpdate(
         eventUserId,
@@ -348,7 +388,13 @@ try {
           )
           res.send("unsent req")
       }
+    }else{
+      res.send("You are already a member of this event ")
     }
+    }
+  }else{
+    res.send("You cannot add yourself")
+  }
 } catch (error) {
   next(error)
 }
@@ -403,9 +449,81 @@ UserRouter.post("/:id/decline/:uid",JWTTokenAuth,async(req,res,next)=>{
      res.send("nothing to decline")
     }
   } catch (error) {
-    
+      next(error)
   }
 })
+
+UserRouter.post('/:id/reportUser', JWTTokenAuth,async (req, res, next) => {
+  try {
+    const reportingUserId = (req as UserRequest).user?._id;
+    const reportedUserId = req.params.id;
+    const { reason } = req.body;
+
+
+    const reportedUser = await UsersModel.findById(reportedUserId);
+    if (!reportedUser) {
+      return res.status(404).send('Reported user not found');
+    }
+    if(reportingUserId===reportedUserId){
+      res.send("You cannot report yourself")
+    }
+
+    const newReport = {
+      reportedUserId,
+      reportingUserId,
+      reason
+    };
+
+
+    await UsersModel.findByIdAndUpdate(reportedUserId, {
+      $push: { reports: newReport }
+    });
+
+    res.send('User reported successfully');
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+UserRouter.get("/moderator/reportedUsers",JWTTokenAuth,
+moderatorOnlyMiddleware,async(req,res,next)=>{
+  try {
+    const users = await UsersModel.find({ reports: { $exists: true, $not: { $size: 0 } } });
+    res.send(users);
+  } catch (error) {
+    next(error)
+  }
+})
+
+
+UserRouter.post("/:id/ban",JWTTokenAuth,
+moderatorOnlyMiddleware,async(req,res,next)=>{
+  try {
+    const reporterId = (req as UserRequest).user?._id;
+    const user = await UsersModel.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).send("User not found");
+    }
+
+    // Add a report point to the user's account
+    user.reportPoints = (user.reportPoints || 0) + 1;
+
+    // Check if the user has more than 3 report points
+    if (user.reportPoints > 3) {
+      await UsersModel.findByIdAndDelete(user._id);
+      return res.send("User deleted");
+    }
+
+    await user.save();
+
+    res.send("Report added to user account");
+  } catch (error) {
+    next(error);
+  }
+})
+
 
 
 export default UserRouter

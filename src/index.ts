@@ -10,6 +10,6 @@ mongoose.connect(process.env.MONGO_DEV as string);
 
 mongoose.connection.on("connected", () => {
   httpServer.listen(port, () => {
-    console.table(listEndpoints(expressServer));
+    console.log("Succesfully connected to mongo");
   });
 });

@@ -9,9 +9,17 @@ const PostsRouter=Express.Router()
 
 PostsRouter.post("/",JWTTokenAuth,async(req,res,next)=>{
     try {
-        const Post=new PostModel(req.body)
+        const userId=(req as UserRequest).user?._id
+        const user= await UsersModel.findById(userId)
+       
+        const Post=new PostModel({
+            text:req.body.text,
+            user:userId,
+            tags:req.body.tags
+        })
         await Post.save()
         res.send("Posted Succesfully")
+    
     } catch (error) {
         next(error)
     }
@@ -44,7 +52,7 @@ PostsRouter.get("/:id",JWTTokenAuth,async(req,res,next)=>{
             const postId=currentPost._id
             const comments=await CommentSchema.find({post:postId})
         res.send(currentPost)
-        res.send(comments)
+        // res.send(comments)
          }else{
             createHttpError(404,`Post with id  ${req.params.id} not found`)
          }

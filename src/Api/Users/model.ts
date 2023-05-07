@@ -11,6 +11,17 @@ const validateEmail = function (email:any) {
   }
 const { Schema, model } = mongoose;
 
+
+const ReportSchema = new Schema({
+  reportedUserId: { type: mongoose.Types.ObjectId, required: true, ref: 'user' },
+  reportingUserId: { type: mongoose.Types.ObjectId, required: true, ref: 'user' },
+  reason: { type: String, required: true },
+  date: { type: Date, required: true, default: Date.now }
+})
+
+
+
+
 const UserModel= new Schema({
     name: { type: String, required: true },
     premiumPoints:{type:Number,default:300},
@@ -46,6 +57,7 @@ const UserModel= new Schema({
   followers:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
   following:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
   eventReqs:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
+  reports: { type: [ReportSchema], default: [] },
   reportPoints:{type:Number,dafault:0}
 
 },{timestamps: true})

@@ -11,7 +11,8 @@ interface User {
   interestedIn:[string],
   followers:[string],
   following:[string],
-  eventReqs:[string]
+  eventReqs:[string],
+  reportPoints:number
 }
 
 export interface UserDoc extends User, Document {}
