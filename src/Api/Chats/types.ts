@@ -1,7 +1,6 @@
-import { User } from "../../types";
-
-
-export interface Message {
+import { Model, Document } from "mongoose";
+import {User} from "../../types"
+interface Message {
     sender: User;
     content: {
       text?: string;
@@ -9,10 +8,17 @@ export interface Message {
     };
     timestamp: number;
   }
-
-  export interface Chat {
+  
+ interface Chat {
     members: User[];
     messages: Message[];
   }
 
+
+
+  export interface chatDoc extends Chat,Document{}
+
+  export interface chatModel extends Model<chatDoc>{
+
+  }
   

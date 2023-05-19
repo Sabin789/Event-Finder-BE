@@ -22,7 +22,9 @@ EventRouter.post("/",JWTTokenAuth,async(req,res,next)=>{
             Picture:req.body.Picture,
             Private:req.body.Private,
             user:userId,
-            limit:req.body.limit
+            limit:req.body.limit,
+            date:req.body.date,
+            time:req.body.time
         })
        await newEvent.save()
         res.status(201).send(newEvent)
@@ -68,7 +70,8 @@ EventRouter.put("/:id",JWTTokenAuth,async(req,res,next)=>{
             req.params.id,
             req.body,
             {new:true,runValidators:true}
-        )
+        ).populate("user", "_id name avatar email")
+
         res.send(updated)
     } catch (error) {
         next(error)
@@ -89,6 +92,7 @@ EventRouter.delete("/:id",JWTTokenAuth,async(req,res,next)=>{
 EventRouter.get("/:id/comms",JWTTokenAuth,async(req,res,next)=>{
     try {
         const comments=await CommentSchema.find({event:req.params.id})
+        .populate("user", "_id name email avatar")
         res.send(comments)
     } catch (error) {
         next(error)
@@ -100,7 +104,7 @@ EventRouter.post( "/:id/picture",EventPictureUploader,JWTTokenAuth, async (req, 
         , {
         Picture: req.file?.path,
     });
-    res.send({ avatarURL: req.file?.path });
+    res.send({ Picture: req.file?.path });
     } catch (error) {
       next(error)
     }

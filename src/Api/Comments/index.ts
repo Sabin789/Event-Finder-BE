@@ -14,7 +14,11 @@ CommentRouter.post("/",JWTTokenAuth,async(req,res,next)=>{
         })
         
         await Comment.save()
-        res.send(Comment)
+        const populatedComment = await Comment
+  .populate("user", "_id name email avatar")
+
+
+res.send(populatedComment)
     } catch (error) {
         next(error)
     }

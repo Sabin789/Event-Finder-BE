@@ -10,6 +10,7 @@ import googleStrategy from "./lib/auth/googleOAuth";
 import PostsRouter from "./Api/Posts";
 import CommentRouter from "./Api/Comments";
 import EventRouter from "./Api/Events";
+import { newConnectionHandler } from "./socket";
 
 const expressServer=express()
 
@@ -31,6 +32,7 @@ const corsOptions: CorsOptions = {
   },
 };
 
+// socketioServer.on("connect", newConnectionHandler)
 
 expressServer.use(cors(corsOptions));
 expressServer.use(express.json());

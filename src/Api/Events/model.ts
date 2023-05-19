@@ -18,7 +18,9 @@ const EventModel= new Schema({
    user:{type:mongoose.Types.ObjectId,ref:"user",required:true},
    members:{type:[{type:String}]},
    limit:{type:Number},
-   likes:{type:[{type:String}]}
+   likes:{type:[{type:String}]},
+   date:{type:Date,required:true},
+   time:{type:String}
 },{timestamps:true})
 
 export default model("event",EventModel)

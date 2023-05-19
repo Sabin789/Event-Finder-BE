@@ -11,9 +11,22 @@ import UsersModel from "./model";
 import PostModel from "../Posts/model"
 import EventModel from "../Events/model"
 import { moderatorOnlyMiddleware } from "../../lib/auth/ModeratorMiddleware";
-
+import moment from "moment";
 const UserRouter=Express.Router()
+UserRouter.post( "/me/avatar",avatarUploader,JWTTokenAuth, async (req, res, next) => {
+  try {
+     await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
+    avatar: req.file?.path,
+  });
 
+  res.send({ avatarURL: req.file?.path });
+  } catch (error) {
+    console.log(error)
+    next(error)
+  }
+ 
+}
+);
 
 UserRouter.get("/googleLogin", passport.authenticate("google", { scope: ["profile", "email"] }))
 
@@ -76,7 +89,7 @@ UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
       const tags=user?.interestedIn
         const posts = await EventModel.find({
           tags: { $in: tags }
-        })
+        }).populate("user","_id name email avatar eventReqs")
         res.send(posts)
       } catch (error) {
         next(error)
@@ -132,18 +145,7 @@ UserRouter.get("/me", JWTTokenAuth, async (req, res, next) => {
 
 
   
-  UserRouter.post( "/me/avatar",avatarUploader,JWTTokenAuth, async (req, res, next) => {
-    try {
-       await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
-      avatar: req.file?.path,
-    });
-    res.send({ avatarURL: req.file?.path });
-    } catch (error) {
-      next(error)
-    }
-   
-  }
-);
+ 
 //Normal Routes
 UserRouter.post("/",async(req,res,next)=>{
     try {
@@ -191,7 +193,7 @@ UserRouter.get("/",JWTTokenAuth,adminOnlyMiddleware,async(req,res,next)=>{
 })
 
 
-UserRouter.get("/:id",JWTTokenAuth,adminOnlyMiddleware,async(req,res,next)=>{
+UserRouter.get("/:id",JWTTokenAuth,async(req,res,next)=>{
     try {
         const User=await UsersModel.findById(req.params.id)
           if(User){
@@ -251,7 +253,8 @@ UserRouter.put("/:id/FollowUnfollow",JWTTokenAuth,async(req,res,next)=>{
         {$push:{followers:userId}},
         {new:true,runValidators:true}
         )
-        res.send(`You started following ${followed?.name}`)
+        const newFollower=await UsersModel.findById(userId)
+        res.send(newFollower)
     }else{
       await UsersModel.findByIdAndUpdate(
         userId,
@@ -263,7 +266,8 @@ UserRouter.put("/:id/FollowUnfollow",JWTTokenAuth,async(req,res,next)=>{
           {$pull:{followers:userId}},
           {new:true,runValidators:true}
           )
-          res.send(`You stopped following ${followed?.name}`)
+          const newFollower=await UsersModel.findById(userId)
+          res.send(newFollower)
     }
  } catch (error) {
   next(error)
@@ -331,12 +335,12 @@ UserRouter.post("/:id/likeUnlikeEvent", JWTTokenAuth, async (req, res, next) => 
     next(error);
   }
 });
-UserRouter.delete("/session", JWTTokenAuth, async (req, res, next) => {
+UserRouter.delete("/me/session", JWTTokenAuth, async (req, res, next) => {
   try {
-    await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
+    const user=await UsersModel.findByIdAndUpdate((req as UserRequest).user!._id, {
       refreshToken: "",
     });
-    res.send({ message: "Successfully logged out!" });
+    res.send(user);
   } catch (error) {
     next(error);
   }
@@ -361,7 +365,6 @@ try {
       )
       res.send(event)
      }else{
-
       await EventModel.findByIdAndUpdate(
         req.params.id,
         {$pull:{members:user?._id}},
@@ -386,7 +389,7 @@ if(!members?.includes(user?._id)){
           {$pull:{eventReqs:user?._id}},
           {new:true,runValidators:true}
           )
-          res.send("unsent req")
+          res.send(event)
       }
     }else{
       res.send("You are already a member of this event ")
@@ -525,5 +528,16 @@ moderatorOnlyMiddleware,async(req,res,next)=>{
 })
 
 
-
+ UserRouter.get("/me/reqs",JWTTokenAuth,async(req,res,next)=>{
+  try {
+    const userId = (req as UserRequest).user!._id;
+    const user = await UsersModel.findById(userId).populate("eventReqs", "_id name email");
+    if (user) {
+      res.send(user.eventReqs);
+    }
+   
+  } catch (error) {
+    next(error)
+  }
+})
 export default UserRouter

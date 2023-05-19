@@ -13,8 +13,10 @@ export const newConnectionHandler = (socket: Socket) => {
   socket.emit("Welcome", socket.id);
 
   socket.on("setUser", (data: { token: string }) => {
+    console.log("hello")
     const { token } = data;
     const secret = process.env.JWT_SECRET as string;
+    console.log(token)
 
     jwt.verify(token, secret, (err, decoded: any) => {
       if (err) {

@@ -58,7 +58,8 @@ const UserModel= new Schema({
   following:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
   eventReqs:{type:[{type:mongoose.Types.ObjectId,ref:"user"}]},
   reports: { type: [ReportSchema], default: [] },
-  reportPoints:{type:Number,dafault:0}
+  reportPoints: { type: Number, default: 0 },
+  Bookmarks:{type:[{type:mongoose.Types.ObjectId,ref:"event"}]}
 
 },{timestamps: true})
 
@@ -71,14 +72,14 @@ UserModel.pre("save",async function () {
     }
 })
 
-UserModel.pre("findOneAndUpdate", async function(){
-    const update = this.getUpdate() as { password?: string };
-    if (update.password) {
-      const password = update.password;
-      const hashedPW = await bcrypt.hash(password, 11);
-      update.password = hashedPW;
-    }
-})
+UserModel.pre("findOneAndUpdate", async function (this: any) {
+  const update: { password?: string } = this.getUpdate();
+  if (update.password) {
+    const password = update.password;
+    const hashedPW = await bcrypt.hash(password, 11);
+    update.password = hashedPW;
+  }
+});
 
 
 UserModel.methods.toJSON=function(){
